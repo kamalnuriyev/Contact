@@ -2,25 +2,35 @@ package com.contact.contact;
 
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.TabHost;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
 
+import org.w3c.dom.Text;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
     EditText nameTxt, surnameTxt, phoneTxt;
+    List<Contact> contactList = new ArrayList<Contact>();
+    ListView contactListView;
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -37,10 +47,21 @@ public class MainActivity extends AppCompatActivity {
         nameTxt = (EditText) findViewById(R.id.textName);
         surnameTxt = (EditText) findViewById(R.id.textSurname);
         phoneTxt = (EditText) findViewById(R.id.textPhoneNumber);
+        contactListView = (ListView) findViewById(R.id.listView);
         final Button addContactButton = (Button) findViewById(R.id.buttonAddContact);
-        TabHost tabHost = (TabHost) findViewById(R.id.tabHost);
+        addContactButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                addContact(nameTxt.getText().toString(), surnameTxt.getText().toString(), phoneTxt.getText().toString());
+                populateList();
+                Toast.makeText(getApplicationContext(), nameTxt.getText().toString()+" added to contacts successfully", Toast.LENGTH_SHORT).show();
+            }
+        });
 
+        TabHost tabHost = (TabHost) findViewById(R.id.tabHost);
+        assert tabHost != null;
         tabHost.setup();
+
         TabHost.TabSpec tabSpec = tabHost.newTabSpec("creator");
         tabSpec.setContent(R.id.tabContactCreator);
         tabSpec.setIndicator("Contact Creator");
@@ -71,6 +92,39 @@ public class MainActivity extends AppCompatActivity {
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
+    }
+
+    public void populateList() {
+        ArrayAdapter<Contact> adapter = new ContactListAdapter();
+        contactListView.setAdapter(adapter);
+    }
+
+    private class ContactListAdapter extends ArrayAdapter<Contact> {
+        public ContactListAdapter() {
+            super(MainActivity.this, R.layout.listview_item, contactList);
+        }
+
+        @Override
+        public View getView(int position, View view, ViewGroup parent) {
+            if (view == null) {
+                view = getLayoutInflater().inflate(R.layout.listview_item, parent, false);
+                System.out.println("view has seen..");
+            }
+            System.out.println("this row");
+            Contact currentContact = contactList.get(position);
+            TextView name = (TextView) view.findViewById(R.id.textViewName);
+            name.setText(currentContact.getName());
+            TextView surname = (TextView) view.findViewById(R.id.textViewSurname);
+            surname.setText(currentContact.getSurname());
+            TextView phoneNumber = (TextView) view.findViewById(R.id.textViewPhoneNumber);
+            phoneNumber.setText(currentContact.getPhoneNumber());
+
+            return view;
+        }
+    }
+
+    private void addContact(String name, String surname, String phoneNumber) {
+        contactList.add(new Contact(name, surname, phoneNumber));
     }
 
     @Override
