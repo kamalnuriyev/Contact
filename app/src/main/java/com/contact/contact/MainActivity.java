@@ -1,5 +1,6 @@
 package com.contact.contact;
 
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -13,6 +14,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TabHost;
 import android.widget.TextView;
@@ -22,15 +24,15 @@ import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
 
-import org.w3c.dom.Text;
-
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     EditText nameTxt, surnameTxt, phoneTxt;
+    ImageView contactImageImgView;
     List<Contact> contactList = new ArrayList<Contact>();
     ListView contactListView;
+    Uri imageUri = null;
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -48,13 +50,25 @@ public class MainActivity extends AppCompatActivity {
         surnameTxt = (EditText) findViewById(R.id.textSurname);
         phoneTxt = (EditText) findViewById(R.id.textPhoneNumber);
         contactListView = (ListView) findViewById(R.id.listView);
+        contactImageImgView = (ImageView) findViewById(R.id.imgViewContactImage);
+
         final Button addContactButton = (Button) findViewById(R.id.buttonAddContact);
         addContactButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                addContact(nameTxt.getText().toString(), surnameTxt.getText().toString(), phoneTxt.getText().toString());
+                contactList.add(new Contact(nameTxt.getText().toString(), surnameTxt.getText().toString(), phoneTxt.getText().toString(), imageUri));
                 populateList();
                 Toast.makeText(getApplicationContext(), nameTxt.getText().toString()+" added to contacts successfully", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        contactImageImgView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent();
+                intent.setType("image/*");
+                intent.setAction(Intent.ACTION_GET_CONTENT);
+                startActivityForResult(Intent.createChooser(intent, "Select Contact Image"), 1);
             }
         });
 
@@ -94,6 +108,15 @@ public class MainActivity extends AppCompatActivity {
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
+    public void onActivityResult(int reqCode, int resCode, Intent data) {
+        if (resCode == RESULT_OK) {
+            if (reqCode == 1) {
+                imageUri = data.getData();
+                contactImageImgView.setImageURI(data.getData());
+            }
+        }
+    }
+
     public void populateList() {
         ArrayAdapter<Contact> adapter = new ContactListAdapter();
         contactListView.setAdapter(adapter);
@@ -108,9 +131,7 @@ public class MainActivity extends AppCompatActivity {
         public View getView(int position, View view, ViewGroup parent) {
             if (view == null) {
                 view = getLayoutInflater().inflate(R.layout.listview_item, parent, false);
-                System.out.println("view has seen..");
             }
-            System.out.println("this row");
             Contact currentContact = contactList.get(position);
             TextView name = (TextView) view.findViewById(R.id.textViewName);
             name.setText(currentContact.getName());
@@ -118,13 +139,11 @@ public class MainActivity extends AppCompatActivity {
             surname.setText(currentContact.getSurname());
             TextView phoneNumber = (TextView) view.findViewById(R.id.textViewPhoneNumber);
             phoneNumber.setText(currentContact.getPhoneNumber());
+            ImageView imgViewContactImage = (ImageView) view.findViewById(R.id.imgViewContactImage);
+            imgViewContactImage.setImageURI(currentContact.getImageUri());
 
             return view;
         }
-    }
-
-    private void addContact(String name, String surname, String phoneNumber) {
-        contactList.add(new Contact(name, surname, phoneNumber));
     }
 
     @Override
