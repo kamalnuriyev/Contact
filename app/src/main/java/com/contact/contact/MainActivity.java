@@ -7,10 +7,13 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
+import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -28,11 +31,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+    private static final int EDIT = 0, DELETE = 1;
+
     EditText nameTxt, surnameTxt, phoneTxt;
     ImageView contactImageImgView;
     List<Contact> contactList = new ArrayList<Contact>();
     ListView contactListView;
-    Uri imageUri = null;
+    Uri imageUri = Uri.parse("android.resource://com.contact.contact/drawable/no_user_logo.png");
+    DatabaseHandler databaseHandler;
+    int longClickedItemIndex;
+    ArrayAdapter<Contact> contactAdapter;
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -41,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.v("MainActivity", "URL is android.resource://com.contact.contact/drawable/no_user_logo.png");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -51,14 +60,30 @@ public class MainActivity extends AppCompatActivity {
         phoneTxt = (EditText) findViewById(R.id.textPhoneNumber);
         contactListView = (ListView) findViewById(R.id.listView);
         contactImageImgView = (ImageView) findViewById(R.id.imgViewContactImage);
+        databaseHandler = new DatabaseHandler(getApplicationContext());
+
+        registerForContextMenu(contactListView);
+        contactListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                longClickedItemIndex = position;
+                return false;
+            }
+        });
 
         final Button addContactButton = (Button) findViewById(R.id.buttonAddContact);
         addContactButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                contactList.add(new Contact(nameTxt.getText().toString(), surnameTxt.getText().toString(), phoneTxt.getText().toString(), imageUri));
-                populateList();
-                Toast.makeText(getApplicationContext(), nameTxt.getText().toString()+" added to contacts successfully", Toast.LENGTH_SHORT).show();
+                Contact contact = new Contact(databaseHandler.getContactsCount(), String.valueOf(nameTxt.getText()), String.valueOf(surnameTxt.getText()), String.valueOf(phoneTxt.getText()), imageUri);
+                if (!contactExists(contact)) {
+                    databaseHandler.createContact(contact);
+                    contactList.add(contact);
+                    contactAdapter.notifyDataSetChanged();
+                    Toast.makeText(getApplicationContext(), String.valueOf(nameTxt.getText()) + " added to contacts successfully", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Toast.makeText(getApplicationContext(), String.valueOf(nameTxt.getText())+" already exists. Please use a different name.", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -95,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                addContactButton.setEnabled(!nameTxt.getText().toString().trim().isEmpty());
+                addContactButton.setEnabled(String.valueOf(nameTxt.getText()).trim().length() > 0);
             }
 
             @Override
@@ -103,9 +128,50 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+
+        if (databaseHandler.getContactsCount() != 0)
+            contactList.addAll(databaseHandler.getAllContactList());
+
+        populateList();
+
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
+    }
+
+    public void onCreateContextMenu(ContextMenu menu, View view, ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, view, menuInfo);
+
+        menu.setHeaderIcon(R.drawable.pencil_icon);
+        menu.setHeaderTitle("Contact Options");
+        menu.add(Menu.NONE, EDIT, Menu.NONE, "Edit Contact");
+        menu.add(Menu.NONE, DELETE, Menu.NONE, "Delete Contact");
+    }
+
+    public boolean onContextItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case EDIT:
+                // TODO: Implement editing contact
+                break;
+            case DELETE:
+                databaseHandler.deleteContact(contactList.get(longClickedItemIndex));
+                contactList.remove(longClickedItemIndex);
+                contactAdapter.notifyDataSetChanged();
+                break;
+        }
+        return super.onContextItemSelected(item);
+    }
+
+    private boolean contactExists(Contact contact) {
+        String name = contact.getName();
+        int contactsCount = contactList.size();
+
+        for (int i=0; i<contactsCount; i++) {
+            if (name.compareToIgnoreCase(contactList.get(i).getName()) == 0)
+                return true;
+        }
+
+        return false;
     }
 
     public void onActivityResult(int reqCode, int resCode, Intent data) {
@@ -118,8 +184,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void populateList() {
-        ArrayAdapter<Contact> adapter = new ContactListAdapter();
-        contactListView.setAdapter(adapter);
+        contactAdapter = new ContactListAdapter();
+        contactListView.setAdapter(contactAdapter);
     }
 
     private class ContactListAdapter extends ArrayAdapter<Contact> {

@@ -8,12 +8,18 @@ import android.net.Uri;
 public class Contact {
     private String name, surname, phoneNumber;
     private Uri imageUri;
+    private int ID;
 
-    public Contact(String name, String surname, String phoneNumber, Uri imageUri) {
+    public Contact(int ID, String name, String surname, String phoneNumber, Uri imageUri) {
+        this.ID = ID;
         this.name = name;
         this.surname = surname;
         this.phoneNumber = phoneNumber;
         this.imageUri = imageUri;
+    }
+
+    public int getID() {
+        return ID;
     }
 
     public String getName() {
